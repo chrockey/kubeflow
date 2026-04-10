@@ -17,12 +17,11 @@ spec:
         memory: 32Gi
         nvidia.com/gpu: "2"
     env:
-      # Paste your key from https://wandb.ai/authorize, or substitute it at
-      # apply time, e.g.:
-      #   WANDB_API_KEY=$(grep ^WANDB_API_KEY ../.env | cut -d= -f2) \
-      #     envsubst < kubeflow/example-training.yaml | kubectl apply -f -
       - name: WANDB_API_KEY
-        value: "<YOUR_WANDB_API_KEY>"
+        valueFrom:
+          secretKeyRef:
+            name: train-env
+            key: WANDB_API_KEY
       - name: WANDB_PROJECT
         value: "mnist-debug"
     args:
