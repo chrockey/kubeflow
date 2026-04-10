@@ -17,13 +17,16 @@ submit a `TrainJob`.
 ### 1. Create `.env` at the repo root
 
 ```bash
+REGISTRY_URL=postech-a.kr-central-2.kcr.dev
+REGISTRY_NAMESPACE=your-kcr-namespace
 REGISTRY_USERNAME=your-kcr-username
 REGISTRY_PASSWORD=your-kcr-password
+IMAGE_NAME=your-image-name
 WANDB_API_KEY=your-wandb-key   # https://wandb.ai/authorize
 ```
 
-`.env` is gitignored. It is the single source of truth: `docker_build.sh`
-reads it for image push, and the next step loads it into a Kubernetes Secret
+`.env` is gitignored and is the single source of truth: `docker_build.sh`
+reads everything from it, and the next step loads it into a Kubernetes Secret
 for the TrainJob.
 
 ### 2. Build and push the image
@@ -32,8 +35,7 @@ for the TrainJob.
 ./docker/docker_build.sh latest --push
 ```
 
-Edit `REGISTRY` and `IMAGE_NAME` in `docker/docker_build.sh` to match your KCR
-namespace.
+Image tag is built as `${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:latest`.
 
 ### 3. Load `.env` into a Kubernetes Secret (one-time)
 
