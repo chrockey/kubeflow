@@ -25,7 +25,7 @@ spec:
             name: train-env-chunghyun
             key: WANDB_API_KEY
       - name: WANDB_PROJECT
-        value: "mnist-debug"
+        value: "kubeflow"
     args:
       - /bin/bash
       - "-lc"
@@ -62,8 +62,8 @@ spec:
         # wandb init (only on rank 0)
         if rank == 0:
             wandb.init(
-                project=os.environ.get("WANDB_PROJECT", "AffordanceRGBD"),
-                name="mnist-debug-ddp",
+                project=os.environ.get("WANDB_PROJECT", "kubeflow"),
+                name="mnist-ddp",
                 config={
                     "epochs": 5,
                     "batch_size": 64,
