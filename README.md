@@ -29,6 +29,7 @@ All subsequent steps run from this directory.
 ### 1. Create `.env` at the repo root
 
 ```bash
+NAMESPACE=your-k8s-namespace     # e.g. kbm-g-np-postech-a
 REGISTRY_URL=your-registry-url   # e.g. postech-a.kr-central-2.kcr.dev
 REGISTRY_NAMESPACE=your-kcr-namespace
 REGISTRY_USERNAME=your-kcr-username
@@ -36,9 +37,17 @@ REGISTRY_PASSWORD=your-kcr-password
 WANDB_API_KEY=your-wandb-key   # https://wandb.ai/authorize
 ```
 
-`.env` is gitignored and holds per-user credentials and registry info.
+`.env` is gitignored and holds per-user credentials and cluster info.
 `docker_build.sh` reads everything from it, and step 3 below loads it into a
 Kubernetes Secret for the TrainJob.
+
+Set the namespace as the default for `kubectl` so you don't need `-n` on
+every command below:
+
+```bash
+set -a && source .env && set +a
+kubectl config set-context --current --namespace=$NAMESPACE
+```
 
 The image name itself (`kubeflow-train`) is defined in `docker/docker_build.sh`
 and must match the `image:` field in `kubeflow/training-runtime.yaml`. Change
@@ -59,8 +68,7 @@ Secrets are namespace-scoped, so in a shared namespace pick a unique name
 
 ```bash
 kubectl create secret generic train-env-<your-name> \
-  --from-env-file=.env \
-  -n kbm-g-np-postech-a
+  --from-env-file=.env
 ```
 
 Then update `kubeflow/example-training.yaml` so its `secretKeyRef.name`
@@ -82,7 +90,7 @@ kubectl apply -f kubeflow/training-runtime.yaml
 
 ```bash
 kubectl apply -f kubeflow/example-training.yaml
-kubectl logs -f -n kbm-g-np-postech-a -l trainer.kubeflow.org/trainjob-name=example-training
+kubectl logs -f -l trainer.kubeflow.org/trainjob-name=example-training
 ```
 
 `example-training.yaml` is a self-contained 2-GPU MNIST DDP job — it generates
