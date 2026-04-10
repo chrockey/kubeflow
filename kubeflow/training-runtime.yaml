@@ -25,6 +25,9 @@ spec:
                     sidecar.istio.io/inject: "false"
                 spec:
                   containers:
-                    - image: postech-a.kr-central-2.kcr.dev/chunghyun/affostruction:latest-b200
+                    # Replace REGISTRY_URL/REGISTRY_NAMESPACE to match your
+                    # .env; keep the image name (`kubeflow-train`) in sync
+                    # with docker/docker_build.sh.
+                    - image: REGISTRY_URL/REGISTRY_NAMESPACE/kubeflow-train:latest
                       name: node
                       imagePullPolicy: Always

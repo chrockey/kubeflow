@@ -1,13 +1,17 @@
 #!/bin/bash
 set -euo pipefail
 
+# Image name — keep in sync with the `image:` field in
+# kubeflow/training-runtime.yaml.
+IMAGE_NAME="kubeflow-train"
+
 # Resolve paths and load .env from repo root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 if [ ! -f "$REPO_ROOT/.env" ]; then
     echo "Error: $REPO_ROOT/.env not found"
-    echo "Create it with REGISTRY_URL, REGISTRY_NAMESPACE, IMAGE_NAME,"
+    echo "Create it with REGISTRY_URL, REGISTRY_NAMESPACE,"
     echo "REGISTRY_USERNAME, REGISTRY_PASSWORD."
     exit 1
 fi
@@ -17,7 +21,6 @@ set +a
 
 : "${REGISTRY_URL:?REGISTRY_URL not set in .env}"
 : "${REGISTRY_NAMESPACE:?REGISTRY_NAMESPACE not set in .env}"
-: "${IMAGE_NAME:?IMAGE_NAME not set in .env}"
 : "${REGISTRY_USERNAME:?REGISTRY_USERNAME not set in .env}"
 : "${REGISTRY_PASSWORD:?REGISTRY_PASSWORD not set in .env}"
 

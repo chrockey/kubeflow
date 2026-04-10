@@ -21,13 +21,16 @@ REGISTRY_URL=your-registry-url   # e.g. postech-a.kr-central-2.kcr.dev
 REGISTRY_NAMESPACE=your-kcr-namespace
 REGISTRY_USERNAME=your-kcr-username
 REGISTRY_PASSWORD=your-kcr-password
-IMAGE_NAME=your-image-name
 WANDB_API_KEY=your-wandb-key   # https://wandb.ai/authorize
 ```
 
-`.env` is gitignored and is the single source of truth: `docker_build.sh`
-reads everything from it, and the next step loads it into a Kubernetes Secret
-for the TrainJob.
+`.env` is gitignored and holds per-user credentials and registry info.
+`docker_build.sh` reads everything from it, and step 3 below loads it into a
+Kubernetes Secret for the TrainJob.
+
+The image name itself (`kubeflow-train`) is defined in `docker/docker_build.sh`
+and must match the `image:` field in `kubeflow/training-runtime.yaml`. Change
+both if you want a different name.
 
 ### 2. Build and push the image
 
@@ -35,7 +38,7 @@ for the TrainJob.
 ./docker/docker_build.sh latest --push
 ```
 
-Image tag is built as `${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:latest`.
+Image tag is built as `${REGISTRY_URL}/${REGISTRY_NAMESPACE}/kubeflow-train:latest`.
 
 ### 3. Load `.env` into a Kubernetes Secret (one-time)
 
@@ -55,11 +58,13 @@ per-job edits.
 
 ### 4. Apply the TrainingRuntime
 
+Replace the `REGISTRY_URL` and `REGISTRY_NAMESPACE` placeholders in the
+`image:` field of `kubeflow/training-runtime.yaml` with your real values from
+`.env`, then:
+
 ```bash
 kubectl apply -f kubeflow/training-runtime.yaml
 ```
-
-Edit the `image:` field to point at the tag you pushed in step 2.
 
 ### 5. Submit the TrainJob
 
