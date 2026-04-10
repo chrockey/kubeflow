@@ -29,8 +29,8 @@ All subsequent steps run from this directory.
 ### 1. Create `.env` at the repo root
 
 ```bash
-REGISTRY_URL=your-registry-url   # e.g. postech-a.kr-central-2.kcr.dev
-REGISTRY_NAMESPACE=your-kcr-namespace
+REGISTRY_URL=your-registry-url         # e.g. postech-a.kr-central-2.kcr.dev
+REGISTRY_NAMESPACE=your-kcr-namespace  # e.g. chunghyun
 REGISTRY_USERNAME=your-kcr-username
 REGISTRY_PASSWORD=your-kcr-password
 WANDB_API_KEY=your-wandb-key   # https://wandb.ai/authorize
