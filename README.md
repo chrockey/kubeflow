@@ -10,7 +10,7 @@ submit a `TrainJob`.
 
 - A Kakao Cloud Kubernetes namespace with the Kubeflow Trainer CRDs installed
 - `kubectl` configured for that namespace
-- `docker` with push access to KCR (`postech-a.kr-central-2.kcr.dev`)
+- `docker` with push access to KCR
 
 ## Workflow
 
