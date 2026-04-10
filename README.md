@@ -40,6 +40,12 @@ WANDB_API_KEY=your-wandb-key   # https://wandb.ai/authorize
 `docker_build.sh` reads everything from it, and step 3 below loads it into a
 Kubernetes Secret for the TrainJob.
 
+> **Note:** `REGISTRY_NAMESPACE` is your **Kakao Container Registry account**
+> (e.g. `chunghyun`), *not* the Kubernetes namespace of your cluster
+> (e.g. `kbm-g-np-postech-a`). The two are unrelated. The full image tag
+> built by `docker_build.sh` will be
+> `${REGISTRY_URL}/${REGISTRY_NAMESPACE}/kubeflow-train:latest`.
+
 The image name itself (`kubeflow-train`) is defined in `docker/docker_build.sh`
 and must match the `image:` field in `kubeflow/training-runtime.yaml`. Change
 both if you want a different name.
