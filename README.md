@@ -81,7 +81,7 @@ code or dataset.
 
 | File | Purpose |
 |---|---|
-| `docker/Dockerfile` | CUDA 12.8 + PyTorch + flash-attn + spconv (B200) |
+| `docker/Dockerfile` | Minimal CUDA 12.8 + PyTorch + torchvision + wandb image |
 | `docker/docker_build.sh` | Build / test / push to KCR (reads `.env`) |
 | `kubeflow/training-runtime.yaml` | Reusable `TrainingRuntime` with image and parallelism policy |
 | `kubeflow/example-training.yaml` | MNIST DDP smoke-test `TrainJob` |
