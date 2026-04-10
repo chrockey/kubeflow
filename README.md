@@ -39,15 +39,19 @@ Image tag is built as `${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:lates
 
 ### 3. Load `.env` into a Kubernetes Secret (one-time)
 
+Secrets are namespace-scoped, so in a shared namespace pick a unique name
+(e.g. `train-env-<your-name>`) to avoid clobbering other users:
+
 ```bash
-kubectl create secret generic train-env \
+kubectl create secret generic train-env-<your-name> \
   --from-env-file=.env \
   -n kbm-g-np-postech-a
 ```
 
-The TrainJob references `train-env` via `secretKeyRef`, so `WANDB_API_KEY`
-(and any other variable in `.env`) is injected into the pod with no per-job
-edits.
+Then update `kubeflow/example-training.yaml` so its `secretKeyRef.name`
+matches the Secret you just created. The TrainJob will then read
+`WANDB_API_KEY` (and any other variable in `.env`) from your Secret with no
+per-job edits.
 
 ### 4. Apply the TrainingRuntime
 

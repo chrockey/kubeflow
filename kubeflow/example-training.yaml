@@ -20,7 +20,9 @@ spec:
       - name: WANDB_API_KEY
         valueFrom:
           secretKeyRef:
-            name: train-env
+            # Rename to match your own Secret in shared namespaces, e.g.
+            # `train-env-<your-name>`. See README step 3.
+            name: train-env-chunghyun
             key: WANDB_API_KEY
       - name: WANDB_PROJECT
         value: "mnist-debug"
