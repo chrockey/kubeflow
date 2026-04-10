@@ -1,0 +1,12 @@
+# Registry credentials — never commit
+docker/.env.registry
+.env.registry
+
+# Real WANDB secret manifests (only the *.example.yaml template is tracked)
+kubeflow/wandb-secret.yaml
+kubeflow/wandb-secret-*.yaml
+!kubeflow/wandb-secret.example.yaml
+
+# OS / editor
+.DS_Store
+*.swp

@@ -1,0 +1,30 @@
+apiVersion: trainer.kubeflow.org/v1alpha1
+kind: TrainingRuntime
+metadata:
+  name: example-runtime
+  namespace: kbm-g-np-postech-a
+spec:
+  mlPolicy:
+    numNodes: 1
+    torch:
+      numProcPerNode: auto
+  template:
+    spec:
+      replicatedJobs:
+        - groupName: default
+          name: node
+          replicas: 1
+          template:
+            metadata:
+              labels:
+                trainer.kubeflow.org/trainjob-ancestor-step: trainer
+            spec:
+              template:
+                metadata:
+                  annotations:
+                    sidecar.istio.io/inject: "false"
+                spec:
+                  containers:
+                    - image: postech-a.kr-central-2.kcr.dev/chunghyun/affostruction:latest-b200
+                      name: node
+                      imagePullPolicy: Always

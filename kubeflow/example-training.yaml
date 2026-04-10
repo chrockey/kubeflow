@@ -1,0 +1,181 @@
+apiVersion: trainer.kubeflow.org/v1alpha1
+kind: TrainJob
+metadata:
+  name: example-training
+  namespace: kbm-g-np-postech-a
+spec:
+  runtimeRef:
+    apiGroup: trainer.kubeflow.org
+    kind: TrainingRuntime
+    name: example-runtime
+  trainer:
+    numNodes: 1
+    numProcPerNode: 2
+    resourcesPerNode:
+      limits:
+        cpu: "16"
+        memory: 32Gi
+        nvidia.com/gpu: "2"
+    env:
+      - name: WANDB_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: wandb-secret
+            key: api-key
+      - name: WANDB_PROJECT
+        value: "mnist-debug"
+    args:
+      - /bin/bash
+      - "-lc"
+      - |-
+        set -euo pipefail
+        echo "=== System Info ==="
+        nvidia-smi
+        echo "=== Python/PyTorch ==="
+        python -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA: {torch.version.cuda}'); print(f'GPUs: {torch.cuda.device_count()}')"
+
+        echo "=== Starting MNIST DDP Training ==="
+        cat > /tmp/mnist_train.py << 'MNIST_SCRIPT'
+        import torch
+        import torch.nn as nn
+        import torch.optim as optim
+        import torch.distributed as dist
+        from torch.nn.parallel import DistributedDataParallel as DDP
+        from torch.utils.data import DataLoader
+        from torch.utils.data.distributed import DistributedSampler
+        from torchvision import datasets, transforms
+        import wandb
+        import os
+
+        # DDP setup
+        dist.init_process_group(backend="nccl")
+        local_rank = int(os.environ.get("LOCAL_RANK", 0))
+        world_size = dist.get_world_size()
+        rank = dist.get_rank()
+        torch.cuda.set_device(local_rank)
+        device = torch.device("cuda", local_rank)
+
+        print(f"[Rank {rank}] Initialized DDP: local_rank={local_rank}, world_size={world_size}")
+
+        # wandb init (only on rank 0)
+        if rank == 0:
+            wandb.init(
+                project=os.environ.get("WANDB_PROJECT", "AffordanceRGBD"),
+                name="mnist-debug-ddp",
+                config={
+                    "epochs": 5,
+                    "batch_size": 64,
+                    "learning_rate": 0.001,
+                    "world_size": world_size,
+                }
+            )
+            config = wandb.config
+        else:
+            config = type('Config', (), {"epochs": 5, "batch_size": 64, "learning_rate": 0.001})()
+
+        # Data
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,))
+        ])
+
+        # Only rank 0 downloads, others wait
+        if rank == 0:
+            train_dataset = datasets.MNIST('/tmp/mnist', train=True, download=True, transform=transform)
+            test_dataset = datasets.MNIST('/tmp/mnist', train=False, download=True, transform=transform)
+        dist.barrier()
+        if rank != 0:
+            train_dataset = datasets.MNIST('/tmp/mnist', train=True, download=False, transform=transform)
+            test_dataset = datasets.MNIST('/tmp/mnist', train=False, download=False, transform=transform)
+
+        train_sampler = DistributedSampler(train_dataset, num_replicas=world_size, rank=rank, shuffle=True)
+        test_sampler = DistributedSampler(test_dataset, num_replicas=world_size, rank=rank, shuffle=False)
+
+        train_loader = DataLoader(train_dataset, batch_size=config.batch_size, sampler=train_sampler, num_workers=2)
+        test_loader = DataLoader(test_dataset, batch_size=config.batch_size, sampler=test_sampler, num_workers=2)
+
+        # Simple CNN Model
+        class SimpleCNN(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.conv1 = nn.Conv2d(1, 32, 3, 1)
+                self.conv2 = nn.Conv2d(32, 64, 3, 1)
+                self.fc1 = nn.Linear(9216, 128)
+                self.fc2 = nn.Linear(128, 10)
+
+            def forward(self, x):
+                x = torch.relu(self.conv1(x))
+                x = torch.relu(self.conv2(x))
+                x = torch.max_pool2d(x, 2)
+                x = torch.flatten(x, 1)
+                x = torch.relu(self.fc1(x))
+                x = self.fc2(x)
+                return x
+
+        model = SimpleCNN().to(device)
+        model = DDP(model, device_ids=[local_rank])
+        optimizer = optim.Adam(model.parameters(), lr=config.learning_rate)
+        criterion = nn.CrossEntropyLoss()
+
+        # Training loop
+        for epoch in range(config.epochs):
+            model.train()
+            train_sampler.set_epoch(epoch)
+            train_loss = 0
+            for batch_idx, (data, target) in enumerate(train_loader):
+                data, target = data.to(device), target.to(device)
+                optimizer.zero_grad()
+                output = model(data)
+                loss = criterion(output, target)
+                loss.backward()
+                optimizer.step()
+                train_loss += loss.item()
+
+            train_loss /= len(train_loader)
+
+            # Validation
+            model.eval()
+            val_loss = 0
+            correct = 0
+            total = 0
+            with torch.no_grad():
+                for data, target in test_loader:
+                    data, target = data.to(device), target.to(device)
+                    output = model(data)
+                    val_loss += criterion(output, target).item()
+                    pred = output.argmax(dim=1, keepdim=True)
+                    correct += pred.eq(target.view_as(pred)).sum().item()
+                    total += target.size(0)
+
+            val_loss /= len(test_loader)
+
+            # Gather metrics from all ranks
+            correct_tensor = torch.tensor([correct], device=device)
+            total_tensor = torch.tensor([total], device=device)
+            dist.all_reduce(correct_tensor, op=dist.ReduceOp.SUM)
+            dist.all_reduce(total_tensor, op=dist.ReduceOp.SUM)
+            accuracy = 100. * correct_tensor.item() / total_tensor.item()
+
+            if rank == 0:
+                print(f"Epoch {epoch+1}/{config.epochs} - Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Accuracy: {accuracy:.2f}%")
+                wandb.log({
+                    "epoch": epoch + 1,
+                    "train_loss": train_loss,
+                    "val_loss": val_loss,
+                    "accuracy": accuracy
+                })
+
+        if rank == 0:
+            wandb.finish()
+            print("=== MNIST DDP Training Complete ===")
+
+        dist.destroy_process_group()
+        MNIST_SCRIPT
+
+        torchrun --nproc_per_node=2 --standalone /tmp/mnist_train.py
+  podTemplateOverrides:
+    - targetJobs:
+        - name: node
+      metadata:
+        annotations:
+          sidecar.istio.io/inject: "false"
