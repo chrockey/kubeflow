@@ -5,11 +5,9 @@ A minimal, working example of how to run distributed PyTorch training on
 [Kubeflow Trainer](https://www.kubeflow.org/docs/components/trainer/) (`trainer.kubeflow.org/v1alpha1`).
 
 The repo contains:
-- A Dockerfile and build/push script for the
-  [Kakao Container Registry (KCR)](https://www.kakaocloud.com/service/container-registry).
+- A Dockerfile and build/push script for the Kakao Container Registry (KCR).
 - A `TrainingRuntime` and a `TrainJob` you can `kubectl apply` as-is to verify
   your cluster wiring.
-- A `Secret` template for injecting your WANDB API key without committing it.
 
 ## Prerequisites
 
@@ -19,42 +17,32 @@ The repo contains:
 
 ## Workflow
 
-### Step 1 — Build and push the training image
+### Step 1 — Set up your local `.env`
 
-1. Copy the credentials template and fill it in:
-   ```bash
-   cp docker/.env.registry.example docker/.env.registry
-   $EDITOR docker/.env.registry   # set REGISTRY_USERNAME and REGISTRY_PASSWORD
-   ```
-   `docker/.env.registry` is gitignored.
-
-2. Build and push:
-   ```bash
-   ./docker/docker_build.sh latest --push
-   ```
-   The script logs in to KCR with the credentials above, builds
-   `docker/Dockerfile`, and pushes the result. Image tags follow the format
-   `postech-a.kr-central-2.kcr.dev/<your-username>/<image-name>:<tag>`. Edit
-   `REGISTRY` and `IMAGE_NAME` in `docker/docker_build.sh` to match your KCR
-   namespace.
-
-### Step 2 — Create the WANDB secret (optional)
-
-If you use [Weights & Biases](https://wandb.ai/), inject your API key as a
-Kubernetes `Secret` so the key never touches your YAML manifests.
+Create a `.env` file at the repo root with your credentials:
 
 ```bash
-cp kubeflow/wandb-secret.example.yaml kubeflow/wandb-secret.yaml
-$EDITOR kubeflow/wandb-secret.yaml   # paste your key from https://wandb.ai/authorize
-kubectl apply -f kubeflow/wandb-secret.yaml
+REGISTRY_USERNAME=your-kcr-username
+REGISTRY_PASSWORD=your-kcr-password
+WANDB_API_KEY=your-wandb-key   # from https://wandb.ai/authorize
 ```
 
-`kubeflow/wandb-secret.yaml` is gitignored — only the `*.example.yaml` template
-is tracked.
+`.env` is gitignored. `docker_build.sh` reads `REGISTRY_USERNAME` /
+`REGISTRY_PASSWORD` from it, and you can substitute `WANDB_API_KEY` into
+`example-training.yaml` at apply time (see Step 4) instead of creating a
+Kubernetes `Secret`.
 
-If you don't care about secret hygiene, you can skip this step and hard-code
-`WANDB_API_KEY` (and any other tokens like `HF_TOKEN`) directly in the
-`TrainJob`'s `env:` block. Simpler, but **do not commit** that variant.
+### Step 2 — Build and push the training image
+
+```bash
+./docker/docker_build.sh latest --push
+```
+
+The script logs in to KCR with the credentials from `.env`, builds
+`docker/Dockerfile`, and pushes the result. Image tags follow the format
+`postech-a.kr-central-2.kcr.dev/<your-username>/<image-name>:<tag>`. Edit
+`REGISTRY` and `IMAGE_NAME` in `docker/docker_build.sh` to match your KCR
+namespace.
 
 ### Step 3 — Apply the TrainingRuntime
 
@@ -72,8 +60,14 @@ The included `example-training.yaml` is a self-contained 2-GPU MNIST DDP job —
 it generates its own training script inline, so you can verify the whole stack
 without any external code or dataset.
 
+`example-training.yaml` has `WANDB_API_KEY` set to a placeholder
+`<YOUR_WANDB_API_KEY>`. Substitute it from `.env` at apply time:
+
 ```bash
-kubectl apply -f kubeflow/example-training.yaml
+set -a && source .env && set +a
+sed "s|<YOUR_WANDB_API_KEY>|$WANDB_API_KEY|" kubeflow/example-training.yaml \
+  | kubectl apply -f -
+
 kubectl get trainjobs -n kbm-g-np-postech-a
 kubectl logs -f -n kbm-g-np-postech-a -l trainer.kubeflow.org/trainjob-name=example-training
 ```
@@ -81,7 +75,7 @@ kubectl logs -f -n kbm-g-np-postech-a -l trainer.kubeflow.org/trainjob-name=exam
 To adapt this for a real training job, change:
 - `metadata.name` — unique per job
 - `spec.trainer.numProcPerNode` and `resourcesPerNode` — GPUs/CPU/memory per node
-- `spec.trainer.env` — env vars and secret refs (e.g. `HF_TOKEN`, `ATTN_BACKEND`)
+- `spec.trainer.env` — env vars (e.g. `HF_TOKEN`, `ATTN_BACKEND`)
 - `spec.trainer.args` — the bash block that runs `torchrun ... train.py ...`
 - `spec.podTemplateOverrides` — add `volumes` / `volumeMounts` if you need a PVC
   for datasets or checkpoints (e.g. mount a shared PVC at `/workspace`)
@@ -91,11 +85,9 @@ To adapt this for a real training job, change:
 | File | Purpose |
 |---|---|
 | `docker/Dockerfile` | CUDA 12.8 + PyTorch + flash-attn + spconv image (Blackwell / B200) |
-| `docker/docker_build.sh` | Build, optionally test, optionally push to KCR |
-| `docker/.env.registry.example` | Template for KCR credentials (copy to `.env.registry`) |
+| `docker/docker_build.sh` | Build, optionally test, optionally push to KCR (reads `.env`) |
 | `kubeflow/training-runtime.yaml` | `TrainingRuntime` referenced by every `TrainJob` |
 | `kubeflow/example-training.yaml` | Self-contained MNIST DDP `TrainJob` — use as a smoke test |
-| `kubeflow/wandb-secret.example.yaml` | Template for the WANDB API-key `Secret` |
 
 ## Troubleshooting
 

@@ -4,13 +4,16 @@
 REGISTRY_URL="postech-a.kr-central-2.kcr.dev"
 REGISTRY="${REGISTRY_URL}/chunghyun"
 
-# Load registry credentials
+# Load credentials from .env at repo root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "$SCRIPT_DIR/.env.registry" ]; then
-    source "$SCRIPT_DIR/.env.registry"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+if [ -f "$REPO_ROOT/.env" ]; then
+    set -a
+    source "$REPO_ROOT/.env"
+    set +a
 else
-    echo "Error: $SCRIPT_DIR/.env.registry not found"
-    echo "Create it with REGISTRY_USERNAME and REGISTRY_PASSWORD"
+    echo "Error: $REPO_ROOT/.env not found"
+    echo "Create it with REGISTRY_USERNAME, REGISTRY_PASSWORD (and WANDB_API_KEY)"
     exit 1
 fi
 IMAGE_NAME="affostruction"
