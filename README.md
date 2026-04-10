@@ -14,6 +14,18 @@ submit a `TrainJob`.
 
 ## Workflow
 
+### 0. Clone this repo in your Kakao Cloud notebook
+
+Open a terminal in your Kakao Cloud notebook instance (which already has
+`kubectl` and `docker` configured for your namespace) and clone the repo:
+
+```bash
+git clone https://github.com/chrockey/kubeflow.git
+cd kubeflow
+```
+
+All subsequent steps run from this directory.
+
 ### 1. Create `.env` at the repo root
 
 ```bash
