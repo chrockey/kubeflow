@@ -30,7 +30,7 @@ All subsequent steps run from this directory.
 
 ```bash
 REGISTRY_URL=your-registry-url         # e.g. postech-a.kr-central-2.kcr.dev
-REGISTRY_NAMESPACE=your-kcr-namespace  # e.g. chunghyun
+REGISTRY_NAMESPACE=your-kcr-namespace  # your KCR account, usually your user name
 REGISTRY_USERNAME=your-kcr-username
 REGISTRY_PASSWORD=your-kcr-password
 WANDB_API_KEY=your-wandb-key   # https://wandb.ai/authorize
@@ -43,7 +43,7 @@ Kubernetes Secret for the TrainJob.
 
 > [!NOTE]
 > `REGISTRY_NAMESPACE` is your **Kakao Container Registry account**
-> (e.g. `chunghyun`), *not* the Kubernetes namespace of your cluster
+> (usually your user name), *not* the Kubernetes namespace of your cluster
 > (e.g. `kbm-g-np-postech-a`). The two are unrelated. The full image tag
 > built by `docker_build.sh` will be
 > `${REGISTRY_URL}/${REGISTRY_NAMESPACE}/kubeflow-train:latest`.
@@ -71,8 +71,8 @@ kubectl create secret generic train-env-<your-name> \
   -n kbm-g-np-postech-a
 ```
 
-Then update `kubeflow/example-training.yaml` so its `secretKeyRef.name`
-matches the Secret you just created. The TrainJob will then read
+Then set `secretKeyRef.name` in `kubeflow/example-training.yaml` to the Secret
+you just created (`train-env-<your-name>`), and replace `<your-name>` in the job name. The TrainJob will then read
 `WANDB_API_KEY` and `WANDB_ENTITY` (and any other variable in `.env`) from your
 Secret with no per-job edits.
 
@@ -104,11 +104,12 @@ everything below is about keeping your jobs, runs and files distinguishable from
 
 ### Names
 
-- **End every job name with your tag**, e.g. `myproj-run12-<you>`. A tag at the end is the only way to tell
+- **End every job name with your user name**, e.g. `myproj-run12-<your-name>`. The name at the end is the only way to tell
   whose GPUs a pod holds; a project prefix (`pg-...`) says nothing about who to ask.
 - Namespace-scoped objects with a fixed name collide: a second `kubectl apply` of `example-runtime` or
   `train-env` overwrites the first user's. Give **TrainingRuntimes and Secrets your name too**
-  (`<you>-runtime`, `train-env-<you>`, `wandb-secret-<you>`).
+  (`<your-name>-runtime`, `train-env-<your-name>`, `wandb-secret-<your-name>`).
+- Throughout this README and the YAML files, **replace `<your-name>` with your own user name.**
 
 ### W&B: never log into someone else's account or run
 
@@ -147,7 +148,7 @@ everything below is about keeping your jobs, runs and files distinguishable from
   full. Keep code, data, checkpoints and **caches** (`HF_HOME`, `TORCH_HOME`, `UV_CACHE_DIR`, `PIP_CACHE_DIR`,
   `WANDB_DIR`) on the shared PVC. Mount it in pods the same way the notebook sees it (e.g. PVC at `/workspace` =
   `/home/jovyan/<pvc>` in the notebook).
-- Work under your own directory on the PVC (`/workspace/users/<you>/`).
+- Work under your own directory on the PVC (`/workspace/users/<your-name>/`).
 - Pods run as root, so files they write are root-owned in the notebook (`sudo chown` to edit them).
 
 ### Code that a pod reads live
@@ -173,8 +174,8 @@ everything below is about keeping your jobs, runs and files distinguishable from
 ### Watching
 
 ```bash
-kubectl get trainjobs | grep <you>                         # your jobs
-kubectl get pods | grep <you>                              # Pending = waiting for quota
+kubectl get trainjobs | grep <your-name>                         # your jobs
+kubectl get pods | grep <your-name>                              # Pending = waiting for quota
 kubectl logs -f -l trainer.kubeflow.org/trainjob-name=<job>
 kubectl delete trainjob <job>                              # frees its GPUs immediately
 ```

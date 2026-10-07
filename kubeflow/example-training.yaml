@@ -1,8 +1,9 @@
 apiVersion: trainer.kubeflow.org/v1alpha1
 kind: TrainJob
 metadata:
-  # End job names with your tag so others can tell whose GPUs these are (README: Names).
-  name: example-training-chunghyun
+  # Replace <your-name> with YOUR user name: job names end with it so others can tell whose GPUs these are
+  # (README: Names).
+  name: example-training-<your-name>
   namespace: kbm-g-np-postech-a
 spec:
   runtimeRef:
@@ -21,15 +22,14 @@ spec:
       - name: WANDB_API_KEY
         valueFrom:
           secretKeyRef:
-            # Rename to match your own Secret in shared namespaces, e.g.
-            # `train-env-<your-name>`. See README step 3.
-            name: train-env-chunghyun
+            # Your own Secret from README step 3: replace <your-name> with YOUR user name.
+            name: train-env-<your-name>
             key: WANDB_API_KEY
       # Set both explicitly: the default entity is whatever account the key belongs to (README: W&B).
       - name: WANDB_ENTITY
         valueFrom:
           secretKeyRef:
-            name: train-env-chunghyun
+            name: train-env-<your-name>
             key: WANDB_ENTITY
       - name: WANDB_PROJECT
         value: "kubeflow"
